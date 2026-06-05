@@ -4,7 +4,7 @@ outer_diameter = 0.2944e-3 # m
 outer_radius = '${fparse outer_diameter / 2}'
 inner_radius = '${fparse outer_radius - metal_thickness}'
 
-num_mesh_elements_across_metal = 24
+num_mesh_elements_across_metal = 25
 
 # Conditions
 R = 8.31446261815324 #J/ mol K
@@ -46,7 +46,6 @@ surface_concentration_metal_inner = '${fparse metal_solubility_K0 * exp(-metal_s
 [Variables]
   [c_metal]
     initial_condition = ${surface_concentration_metal_inner}
-    scaling = 1e-2
   []
 []
 
@@ -69,11 +68,6 @@ surface_concentration_metal_inner = '${fparse metal_solubility_K0 * exp(-metal_s
   [temperature]
     initial_condition = ${initial_temperature}
   []
-
-  [bounds_dummy_c_metal]
-    order = FIRST
-    family = LAGRANGE
-  []
 []
 
 [AuxKernels]
@@ -81,16 +75,6 @@ surface_concentration_metal_inner = '${fparse metal_solubility_K0 * exp(-metal_s
     type = ConstantAux
     variable = temperature
     value = ${initial_temperature}
-  []
-[]
-
-[Bounds]
-  [c_metal_lower_bound]
-    type = ConstantBounds
-    variable = bounds_dummy_c_metal
-    bounded_variable = c_metal
-    bound_type = lower
-    bound_value = 0.0
   []
 []
 
@@ -121,7 +105,7 @@ surface_concentration_metal_inner = '${fparse metal_solubility_K0 * exp(-metal_s
     type = DerivativeParsedMaterial
     property_name = diffusivity
     coupled_variables = temperature
-    constant_names = 'D0 Ea'
+    constant_names = 'D0 Ea' #m^2/s and J/mol H
     constant_expressions = '2.4e-7 21.1e3'
     material_property_names = 'R'
     expression = 'D0 * exp(-Ea / R / temperature)'
@@ -162,8 +146,6 @@ surface_concentration_metal_inner = '${fparse metal_solubility_K0 * exp(-metal_s
     type = SMP
     full = true
     solve_type = 'NEWTON'
-    petsc_options_iname = '-pc_type -sub_pc_type -snes_type'
-    petsc_options_value = 'asm lu vinewtonrsls'
   []
 []
 
@@ -173,11 +155,11 @@ surface_concentration_metal_inner = '${fparse metal_solubility_K0 * exp(-metal_s
   line_search = 'none'
   l_tol = 1e-11
   nl_abs_tol = 5e-10
-  nl_rel_tol = 1e-6
+  nl_rel_tol = 1e-8
   l_max_its = 20
   nl_max_its = 20
 
-  end_time = 0.1
+  end_time = 1.0
   dtmax = 1e-3
 
   [TimeStepper]
