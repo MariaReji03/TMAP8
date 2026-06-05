@@ -1,5 +1,5 @@
 # Geometry
-metal_thickness = 0.02e-3 # m
+metal_thickness = 0.01e-3 # m
 outer_diameter = 0.2944e-3 # m
 outer_radius = '${fparse outer_diameter / 2}'
 inner_radius = '${fparse outer_radius - metal_thickness}'
