@@ -118,7 +118,7 @@ surface_concentration_metal_inner = '${fparse metal_solubility_K0 * exp(-metal_s
     variable = c_metal
     boundary = left
     diffusivity = diffusivity
-    outputs = csv
+    outputs = csv_scalars 
   []
 
   [flux_outer]
@@ -126,12 +126,26 @@ surface_concentration_metal_inner = '${fparse metal_solubility_K0 * exp(-metal_s
     variable = c_metal
     boundary = right
     diffusivity = diffusivity
-    outputs = csv
+    outputs = csv_scalars 
   []
 
   [total_c_metal]
     type = ElementIntegralVariablePostprocessor
     variable = c_metal
+    outputs = csv_scalars 
+  []
+[]
+
+[VectorPostprocessors]
+  [radial_profile_metal]
+    type = LineValueSampler
+    variable = 'c_metal'
+    start_point = '${inner_radius} 0 0'
+    end_point   = '${fparse inner_radius + metal_thickness} 0 0'
+    num_points  = 20
+    sort_by = x
+    execute_on = 'final'
+    outputs = csv_spatial
   []
 []
 
@@ -175,6 +189,13 @@ surface_concentration_metal_inner = '${fparse metal_solubility_K0 * exp(-metal_s
 
 [Outputs]
   exodus = true
-  csv = true
+  [csv_scalars]
+    type = CSV
+    execute_on = 'timestep_end'
+  []
+  [csv_spatial]
+    type = CSV
+    execute_on = 'final'
+  []
   perf_graph = true
 []
