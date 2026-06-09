@@ -1,21 +1,23 @@
-metal_thickness = 0.02e-3 # m
-outer_diameter = 0.2e-3 # m
+metal_thickness = 0.01e-3 # m
+outer_diameter =  0.2944e-3 # m
 inner_radius = '${fparse outer_diameter/2-metal_thickness}'
-tube_height = 12.5e-3 #m
+tube_height = 0.011 #m
 num_mesh_elements_across_metal = 6
 num_mesh_elements_across_inner_diameter = '${fparse num_mesh_elements_across_metal*4}' # 4 corresponds to inner_radius/metal_thickness
-num_mesh_elements_across_axis = '${fparse num_mesh_elements_across_metal*1000}' # 1000 corresponds to tube_height/metal_thickness
+num_mesh_elements_across_axis = '${fparse num_mesh_elements_across_metal*11}' # 1000 corresponds to tube_height/metal_thickness
 
-initial_temperature = 573.15 # K
-outside_pressure = 1e3 # Pa
-vaccum_pressure = 1e-6 # Pa
-initial_concentration_vaccum = '${fparse vaccum_pressure/R/initial_temperature}'
+initial_temperature = 723.15 # K
+outside_pressure = 2.0e5 # Pa
+vacuum_pressure = 1e-6 # Pa
 R = 8.31446261815324 # ideal gas constant
+initial_concentration_vacuum = '${fparse vacuum_pressure/R/initial_temperature}'
+
 metal_solubility_K0 = '${fparse 2 * 4.45e-1}' # the factor 2 is here to convert from mol(Q2)/m3/sqrt(Pa) to mol(Q)/m3/sqrt(Pa)
 metal_solubility_Ea = -8.4e3 # J/mol
 surface_concentration_metal_outer = '${fparse metal_solubility_K0*exp(-metal_solubility_Ea/R/initial_temperature)*sqrt(outside_pressure)}'
 
 [Mesh]
+  coord_type = RZ
   [gen]
     type = GeneratedMeshGenerator
     dim = 2
@@ -26,7 +28,7 @@ surface_concentration_metal_outer = '${fparse metal_solubility_K0*exp(-metal_sol
     ymin = 0
     ymax = ${tube_height}
   []
-  [block1] # vaccum
+  [block1] # vacuum
     type = SubdomainBoundingBoxGenerator
     block_id = 1
     bottom_left = '0 0 0'
@@ -58,12 +60,11 @@ surface_concentration_metal_outer = '${fparse metal_solubility_K0*exp(-metal_sol
 [Variables]
   [c_metal]
     block = 2 # metal
-    initial_condition = '${fparse initial_concentration_vaccum}'
+    initial_condition = '${fparse initial_concentration_vacuum}'
   []
-  [c_vaccum]
-    block = 1 # vaccum
-    initial_condition = '${fparse initial_concentration_vaccum}'
-    scaling = 1e1
+  [c_vacuum]
+    block = 1 # vacuum
+    initial_condition = '${fparse initial_concentration_vacuum}'
   []
 []
 
@@ -81,18 +82,18 @@ surface_concentration_metal_outer = '${fparse metal_solubility_K0*exp(-metal_sol
     extra_vector_tags = ref
     block = 2 # metal
   []
-  [timeDerivative_vaccum]
+  [timeDerivative_vacuum]
     type = TimeDerivative
-    variable = c_vaccum
+    variable = c_vacuum
     extra_vector_tags = ref
-    block = 1 # vaccum
+    block = 1 # vacuum
   []
-  [diffusion_vaccum]
+  [diffusion_vacuum]
     type = MatDiffusion
-    variable = c_vaccum
+    variable = c_vacuum
     diffusivity = diffusivity
     extra_vector_tags = ref
-    block = 1 # vaccum
+    block = 1 # vacuum
   []
 []
 
@@ -105,7 +106,7 @@ surface_concentration_metal_outer = '${fparse metal_solubility_K0*exp(-metal_sol
     order = FIRST
     family = LAGRANGE
   []
-  [bounds_dummy_c_vaccum]
+  [bounds_dummy_c_vacuum]
     order = FIRST
     family = LAGRANGE
   []
@@ -122,54 +123,54 @@ surface_concentration_metal_outer = '${fparse metal_solubility_K0*exp(-metal_sol
 [Bounds]
   # To prevent negative concentrations
   [c_metal_lower_bound]
-    type = ConstantBoundsAux
+    type = ConstantBounds
     variable = bounds_dummy_c_metal
     bounded_variable = c_metal
     bound_type = lower
-    bound_value = 0.
+    bound_value = 0.0
   []
-  [c_vaccum_lower_bound]
-    type = ConstantBoundsAux
-    variable = bounds_dummy_c_vaccum
-    bounded_variable = c_vaccum
+  [c_vacuum_lower_bound]
+    type = ConstantBounds
+    variable = bounds_dummy_c_vacuum
+    bounded_variable = c_vacuum
     bound_type = lower
-    bound_value = 0.
+    bound_value = 0.0
   []
 []
 
 [BCs]
-  [inner_vaccum]
+  [inner_vacuum]
     type = NeumannBC
-    variable = c_vaccum
+    variable = c_vacuum
     value = 0
     boundary = left # centerline
   []
-  [outside_metal] # Sievert's law with outside pressure - expect ~164 mol/m3 for current values
+  [outside_metal] # Sieverts law with outside pressure
     type = DirichletBC
     variable = c_metal
     value = '${surface_concentration_metal_outer}'
     boundary = right #outer_metal
-
   []
-  [bottom_vaccum] # Pressure of the vaccum
+  [bottom_vacuum] # Pressure of the vacuum
     type = DirichletBC
-    variable = c_vaccum
+    variable = c_vacuum
     boundary = bottom
-    value = '${initial_concentration_vaccum}'
+    value = '${initial_concentration_vacuum}'
   []
 []
 
 [InterfaceKernels]
   [interface]
-    type = InterfaceSorptionSievert
+    type = InterfaceSorption
     K0 = ${metal_solubility_K0}
     Ea = ${metal_solubility_Ea}
+    n_sorption = 0.5
     diffusivity = diffusivity
     unit_scale = 1
     unit_scale_neighbor = 1
     temperature = temperature
     variable = c_metal
-    neighbor_var = c_vaccum
+    neighbor_var = c_vacuum
     sorption_penalty = 1e1
     boundary = Block2_Block1
   []
@@ -191,7 +192,7 @@ surface_concentration_metal_outer = '${fparse metal_solubility_K0*exp(-metal_sol
     expression = 'D0*exp(-Ea/R/temperature)'
     block = 2 # metal
   []
-  [diffusicvity_vaccum] # 1e8 more than diffusicvity_metal
+  [diffusicvity_vacuum] # 1e8 more than diffusicvity_metal
     type = DerivativeParsedMaterial
     property_name = diffusivity
     coupled_variables = temperature
@@ -199,34 +200,129 @@ surface_concentration_metal_outer = '${fparse metal_solubility_K0*exp(-metal_sol
     constant_expressions = '2.90e-7 22.2e3'
     material_property_names = 'R'
     expression = '1e8 * D0*exp(-Ea/R/temperature)'
-    block = 1 # vaccum
+    block = 1 # vacuum
   []
 []
 
 [Postprocessors]
-  [flux_vaccum] # verify flux preservation
+  [flux_vacuum] # verify flux preservation
     type = SideDiffusiveFluxIntegral
-    variable = c_vaccum
+    variable = c_vacuum
     boundary = Block1_Block2
     diffusivity = diffusivity
-    outputs = csv
+    outputs = csv_scalars
   []
   [flux_metal]
     type = SideDiffusiveFluxIntegral
     variable = c_metal
     boundary = Block2_Block1
     diffusivity = diffusivity
-    outputs = csv
+    outputs = csv_scalars
   []
   [total_c_metal]
     type = ElementIntegralVariablePostprocessor
     variable = c_metal
     block = 2
+    outputs = csv_scalars
   []
-  [total_c_vaccum]
+  [total_c_vacuum]
     type = ElementIntegralVariablePostprocessor
-    variable = c_vaccum
+    variable = c_vacuum
     block = 1
+    outputs = csv_scalars
+  []
+[]
+
+[VectorPostprocessors]
+  [radial_profile_metal_mid]
+    type = LineValueSampler
+    variable = 'c_metal'
+    start_point = '${inner_radius} 0.0055 0'
+    end_point   = '${fparse inner_radius + metal_thickness} 0.0055 0'
+    num_points  = 20
+    sort_by = x
+    execute_on = 'final'
+    outputs = csv_spatial
+  []
+  [radial_profile_vacuum_mid]
+    type = LineValueSampler
+    variable = 'c_vacuum'
+    start_point = '0 0.0055 0'
+    end_point   = '${inner_radius} 0.0055 0'
+    num_points  = 20
+    sort_by = x
+    execute_on = 'final'
+    outputs = csv_spatial
+  []
+    [radial_profile_metal_top]
+    type = LineValueSampler
+    variable = 'c_metal'
+    start_point = '${inner_radius} 0.011 0'
+    end_point   = '${fparse inner_radius + metal_thickness} 0.011 0'
+    num_points  = 20
+    sort_by = x
+    execute_on = 'final'
+    outputs = csv_spatial
+  []
+  [radial_profile_vacuum_top]
+    type = LineValueSampler
+    variable = 'c_vacuum'
+    start_point = '0 0.011 0'
+    end_point   = '${inner_radius} 0.011 0'
+    num_points  = 20
+    sort_by = x
+    execute_on = 'final'
+    outputs = csv_spatial
+  []
+    [radial_profile_metal_bottom]
+    type = LineValueSampler
+    variable = 'c_metal'
+    start_point = '${inner_radius} 0 0'
+    end_point   = '${fparse inner_radius + metal_thickness} 0 0'
+    num_points  = 20
+    sort_by = x
+    execute_on = 'final'
+    outputs = csv_spatial
+  []
+  [radial_profile_vacuum_bottom]
+    type = LineValueSampler
+    variable = 'c_vacuum'
+    start_point = '0 0 0'
+    end_point   = '${inner_radius} 0 0'
+    num_points  = 20
+    sort_by = x
+    execute_on = 'final'
+    outputs = csv_spatial
+  []
+  [axial_profile_metal_inner]
+    type = LineValueSampler
+    variable = 'c_metal'
+    start_point = '${inner_radius} 0 0'
+    end_point   = '${inner_radius} ${tube_height} 0'
+    num_points  = 40
+    sort_by = y
+    execute_on = 'final'
+    outputs = csv_spatial
+  []
+  [axial_profile_metal_outer]
+    type = LineValueSampler
+    variable = 'c_metal'
+    start_point = '${fparse inner_radius + metal_thickness} 0 0'
+    end_point   = '${fparse inner_radius + metal_thickness} ${tube_height} 0'
+    num_points  = 40
+    sort_by = y
+    execute_on = 'final'
+    outputs = csv_spatial
+  []
+  [axial_profile_vacuum_center]
+    type = LineValueSampler
+    variable = 'c_vacuum'
+    start_point = '0 0 0'
+    end_point   = '0 ${tube_height} 0'
+    num_points  = 40
+    sort_by = y
+    execute_on = 'final'
+    outputs = csv_spatial
   []
 []
 
@@ -242,8 +338,8 @@ surface_concentration_metal_outer = '${fparse metal_solubility_K0*exp(-metal_sol
     type = SMP
     full = true
     solve_type = 'NEWTON'
-    petsc_options_iname = '-pc_type -sub_pc_type -snes_type'
-    petsc_options_value = 'asm      lu           vinewtonrsls' # This petsc option helps prevent negative concentrations'
+    petsc_options_iname = '-pc_type -pc_hypre_type -snes_type'
+    petsc_options_value = 'hypre boomeramg vinewtonrsls'
   []
 []
 
@@ -251,29 +347,39 @@ surface_concentration_metal_outer = '${fparse metal_solubility_K0*exp(-metal_sol
   type = Transient
   line_search = 'none'
   l_tol = 1e-11
-  nl_abs_tol = 5e-10 #1e-14
-  nl_rel_tol = 1e-6 #1e-08
-  l_max_its = 20
+  nl_abs_tol = 1e-8 #1e-14
+  nl_rel_tol = 1e-5 #1e-08
+  l_max_its = 30
   nl_max_its = 20
 
-  end_time = 100
-  dtmax = 1e0
+  end_time = 0.05
+  dtmax = 5e-4
+
+  automatic_scaling = true
+  compute_scaling_once = false
 
   # Time Stepper: Using Iteration Adaptative here
   [TimeStepper]
     type = IterationAdaptiveDT
-    optimal_iterations = 12
+    optimal_iterations = 6
     linear_iteration_ratio = 100
     iteration_window = 1
     growth_factor = 1.2
-    dt = 1e-5 #s
-    cutback_factor = 0.75
+    dt = 1e-7 #s
+    cutback_factor = 0.5
   []
 []
 
 [Outputs]
   exodus = true
-  csv = true
+  [csv_scalars]
+    type = CSV
+    execute_on = 'timestep_end'
+  []
+  [csv_spatial]
+    type = CSV
+    execute_on = 'final'
+  []
   [dof]
     type = DOFMap
     execute_on = initial
