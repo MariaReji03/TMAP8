@@ -25,9 +25,6 @@ surface_concentration_metal_outer = '${fparse metal_solubility_K0 * exp(-metal_s
 surface_concentration_metal_inner = '${fparse metal_solubility_K0 * exp(-metal_solubility_Ea / R / initial_temperature) * sqrt(vacuum_tritium_pressure)}'
 
 [Mesh]
-  coord_type = RZ
-  rz_coord_axis = Y
-
   [gen]
     type = GeneratedMeshGenerator
     dim = 1
@@ -118,6 +115,7 @@ surface_concentration_metal_inner = '${fparse metal_solubility_K0 * exp(-metal_s
     variable = c_metal
     boundary = left
     diffusivity = diffusivity
+    execute_on = 'timestep_end'
     outputs = csv_scalars 
   []
 
@@ -126,6 +124,7 @@ surface_concentration_metal_inner = '${fparse metal_solubility_K0 * exp(-metal_s
     variable = c_metal
     boundary = right
     diffusivity = diffusivity
+    execute_on = 'timestep_end'
     outputs = csv_scalars 
   []
 
@@ -133,6 +132,28 @@ surface_concentration_metal_inner = '${fparse metal_solubility_K0 * exp(-metal_s
     type = ElementIntegralVariablePostprocessor
     variable = c_metal
     outputs = csv_scalars 
+  []
+  #mass conservation check
+  [flux_inner_cumulative]
+    type = TimeIntegratedPostprocessor
+    value = flux_inner
+    execute_on = 'timestep_end'
+    outputs = csv_scalars
+  []
+
+  [flux_outer_cumulative]
+    type = TimeIntegratedPostprocessor
+    value = flux_outer
+    execute_on = 'timestep_end'
+    outputs = csv_scalars
+  []
+
+  [mass_conservation_check]
+    type = ParsedPostprocessor
+    pp_names = 'total_c_metal flux_inner_cumulative flux_outer_cumulative'
+    expression = 'total_c_metal + flux_inner_cumulative + flux_outer_cumulative'
+    execute_on = 'timestep_end'
+    outputs = csv_scalars
   []
 []
 
@@ -182,7 +203,7 @@ surface_concentration_metal_inner = '${fparse metal_solubility_K0 * exp(-metal_s
     linear_iteration_ratio = 100
     iteration_window = 1
     growth_factor = 1.2
-    dt = 1e-5
+    dt = 1e-10
     cutback_factor = 0.75
   []
 []
