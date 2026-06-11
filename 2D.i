@@ -2,9 +2,9 @@ metal_thickness = 0.01e-3 # m
 outer_diameter =  0.2944e-3 # m
 inner_radius = '${fparse outer_diameter/2-metal_thickness}'
 tube_height = 0.011 #m
-num_mesh_elements_across_metal = 6
-num_mesh_elements_across_inner_diameter = '${fparse num_mesh_elements_across_metal*4}' # 4 corresponds to inner_radius/metal_thickness
-num_mesh_elements_across_axis = '${fparse num_mesh_elements_across_metal*11}' # 1000 corresponds to tube_height/metal_thickness
+num_mesh_elements_across_metal = 50
+num_mesh_elements_across_inner_diameter = 82 
+num_mesh_elements_across_axis = 132
 
 initial_temperature = 723.15 # K
 outside_pressure = 2.0e5 # Pa
@@ -42,12 +42,33 @@ surface_concentration_metal_outer = '${fparse metal_solubility_K0*exp(-metal_sol
     top_right = '${fparse inner_radius + metal_thickness} ${tube_height} 0'
     input = block1
   []
-  [breakmesh]
+  [interface_vacuum_to_metal]
+    type = SideSetsBetweenSubdomainsGenerator
     input = block2
-    type = BreakMeshByBlockGenerator
-    block_pairs = '1 2'
-    split_interface = true
-    add_interface_on_two_sides = true
+    primary_block = 1
+    paired_block = 2
+    new_boundary = 'interface_vacuum_metal'
+  []
+  [interface_metal_to_vacuum]
+    type = SideSetsBetweenSubdomainsGenerator
+    input = interface_vacuum_to_metal
+    primary_block = 2
+    paired_block = 1
+    new_boundary = 'interface_metal_vacuum'
+  []
+  [bottom_vacuum_side]
+    type = ParsedGenerateSideset
+    input = interface_metal_to_vacuum
+    combinatorial_geometry = 'y =0 & x < ${inner_radius}'
+    new_sideset_name = 'bottom_vacuum'
+    included_subdomains = '1'
+  []
+  [bottom_metal_side]
+    type = ParsedGenerateSideset
+    input = bottom_vacuum_side
+    combinatorial_geometry = 'y =0 & x >= ${inner_radius}'
+    new_sideset_name = 'bottom_metal'
+    included_subdomains = '2'
   []
 []
 
@@ -154,7 +175,7 @@ surface_concentration_metal_outer = '${fparse metal_solubility_K0*exp(-metal_sol
   [bottom_vacuum] # Pressure of the vacuum
     type = DirichletBC
     variable = c_vacuum
-    boundary = bottom
+    boundary = bottom_vacuum
     value = '${initial_concentration_vacuum}'
   []
 []
@@ -172,7 +193,7 @@ surface_concentration_metal_outer = '${fparse metal_solubility_K0*exp(-metal_sol
     variable = c_metal
     neighbor_var = c_vacuum
     sorption_penalty = 1e1
-    boundary = Block2_Block1
+    boundary = interface_metal_vacuum
   []
 []
 
@@ -182,7 +203,7 @@ surface_concentration_metal_outer = '${fparse metal_solubility_K0*exp(-metal_sol
     property_name = 'R'
     value = '8.31446261815324' # ideal gas constant
   []
-  [diffusicvity_metal]
+  [diffusivity_metal]
     type = DerivativeParsedMaterial
     property_name = diffusivity
     coupled_variables = temperature
@@ -192,7 +213,7 @@ surface_concentration_metal_outer = '${fparse metal_solubility_K0*exp(-metal_sol
     expression = 'D0*exp(-Ea/R/temperature)'
     block = 2 # metal
   []
-  [diffusicvity_vacuum] # 1e8 more than diffusicvity_metal
+  [diffusivity_vacuum] # 1e8 more than diffusicvity_metal
     type = DerivativeParsedMaterial
     property_name = diffusivity
     coupled_variables = temperature
@@ -208,14 +229,21 @@ surface_concentration_metal_outer = '${fparse metal_solubility_K0*exp(-metal_sol
   [flux_vacuum] # verify flux preservation
     type = SideDiffusiveFluxIntegral
     variable = c_vacuum
-    boundary = Block1_Block2
+    boundary = interface_vacuum_metal
     diffusivity = diffusivity
     outputs = csv_scalars
   []
   [flux_metal]
     type = SideDiffusiveFluxIntegral
     variable = c_metal
-    boundary = Block2_Block1
+    boundary = right
+    diffusivity = diffusivity
+    outputs = csv_scalars
+  []
+  [flux_out_bottom]
+    type = SideDiffusiveFluxIntegral
+    variable = c_vacuum
+    boundary = bottom_vacuum
     diffusivity = diffusivity
     outputs = csv_scalars
   []
@@ -352,7 +380,7 @@ surface_concentration_metal_outer = '${fparse metal_solubility_K0*exp(-metal_sol
   l_max_its = 30
   nl_max_its = 20
 
-  end_time = 0.05
+  end_time = 0.1
   dtmax = 5e-4
 
   automatic_scaling = true
@@ -365,7 +393,7 @@ surface_concentration_metal_outer = '${fparse metal_solubility_K0*exp(-metal_sol
     linear_iteration_ratio = 100
     iteration_window = 1
     growth_factor = 1.2
-    dt = 1e-7 #s
+    dt = 1e-9 #s
     cutback_factor = 0.5
   []
 []
