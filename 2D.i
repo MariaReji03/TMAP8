@@ -1,19 +1,22 @@
-metal_thickness = 0.01e-3 # m
-outer_diameter =  0.2944e-3 # m
+metal_thickness = '${units 0.01e-3 m}'
+outer_diameter = '${units 0.2944e-3 m}'
 inner_radius = '${fparse outer_diameter/2-metal_thickness}'
-tube_height = 0.011 #m
+tube_height = '${units 0.011 m}'
+
 num_mesh_elements_across_metal = 50
-num_mesh_elements_across_inner_diameter = 82 
+num_mesh_elements_across_inner_diameter = 82
 num_mesh_elements_across_axis = 132
 
-initial_temperature = 723.15 # K
-outside_pressure = 2.0e5 # Pa
-vacuum_pressure = 1e-6 # Pa
-R = 8.31446261815324 # ideal gas constant
+initial_temperature = '${units 723.15 K}'
+outside_pressure = '${units 2.0e5 Pa}'
+vacuum_pressure = '${units 1e-6 Pa}'
+
+R = '${units 8.31446261815324 J/mol/K}'
 initial_concentration_vacuum = '${fparse vacuum_pressure/R/initial_temperature}'
 
-metal_solubility_K0 = '${fparse 2 * 4.45e-1}' # the factor 2 is here to convert from mol(Q2)/m3/sqrt(Pa) to mol(Q)/m3/sqrt(Pa)
-metal_solubility_Ea = -8.4e3 # J/mol
+metal_solubility_K0_per_molecule = '${units 4.45e-1 mol/m^3/Pa^0.5}'
+metal_solubility_K0 = '${fparse 2 * metal_solubility_K0_per_molecule}' # the factor 2 is here to convert from mol(Q2)/m3/sqrt(Pa) to mol(Q)/m3/sqrt(Pa)
+metal_solubility_Ea = '${units -8.4e3 J/mol}'
 surface_concentration_metal_outer = '${fparse metal_solubility_K0*exp(-metal_solubility_Ea/R/initial_temperature)*sqrt(outside_pressure)}'
 
 [Mesh]
@@ -69,6 +72,20 @@ surface_concentration_metal_outer = '${fparse metal_solubility_K0*exp(-metal_sol
     combinatorial_geometry = 'y =0 & x >= ${inner_radius}'
     new_sideset_name = 'bottom_metal'
     included_subdomains = '2'
+  []
+  [top_metal_side]
+    type = ParsedGenerateSideset
+    input = bottom_metal_side
+    combinatorial_geometry = 'y = ${tube_height} & x >= ${inner_radius}'
+    new_sideset_name = 'top_metal'
+    included_subdomains = '2'
+  []
+  [top_vacuum_side]
+    type = ParsedGenerateSideset
+    input = top_metal_side
+    combinatorial_geometry = 'y = ${tube_height} & x < ${inner_radius}'
+    new_sideset_name = 'top_vacuum'
+    included_subdomains = '1'
   []
 []
 
@@ -178,6 +195,25 @@ surface_concentration_metal_outer = '${fparse metal_solubility_K0*exp(-metal_sol
     boundary = bottom_vacuum
     value = '${initial_concentration_vacuum}'
   []
+  #Explicitly add NeumannBC on all other boundaries
+  [top_vacuum]
+    type = NeumannBC
+    variable = c_vacuum
+    value = 0
+    boundary = top_vacuum
+  []
+  [top_metal]
+    type = NeumannBC
+    variable = c_metal
+    value = 0
+    boundary = top_metal
+  []
+  [bottom_metal]
+    type = NeumannBC
+    variable = c_metal
+    value = 0
+    boundary = bottom_metal
+  []
 []
 
 [InterfaceKernels]
@@ -208,7 +244,7 @@ surface_concentration_metal_outer = '${fparse metal_solubility_K0*exp(-metal_sol
     property_name = diffusivity
     coupled_variables = temperature
     constant_names = 'D0 Ea'
-    constant_expressions = '2.90e-7 22.2e3'
+    constant_expressions = '${units 2.4e-7 m^2/s} ${units 21.1e3 J/mol}'
     material_property_names = 'R'
     expression = 'D0*exp(-Ea/R/temperature)'
     block = 2 # metal
@@ -218,7 +254,7 @@ surface_concentration_metal_outer = '${fparse metal_solubility_K0*exp(-metal_sol
     property_name = diffusivity
     coupled_variables = temperature
     constant_names = 'D0 Ea'
-    constant_expressions = '2.90e-7 22.2e3'
+    constant_expressions = '${units 2.4e-7 m^2/s} ${units 21.1e3 J/mol}'
     material_property_names = 'R'
     expression = '1e8 * D0*exp(-Ea/R/temperature)'
     block = 1 # vacuum
@@ -259,6 +295,68 @@ surface_concentration_metal_outer = '${fparse metal_solubility_K0*exp(-metal_sol
     block = 1
     outputs = csv_scalars
   []
+    # interface flux on metal side
+  [flux_interface_metal_side]
+    type = SideDiffusiveFluxIntegral
+    variable = c_metal
+    boundary = interface_metal_vacuum
+    diffusivity = diffusivity
+    outputs = csv_scalars
+  []
+
+  # top boundary fluxes
+  [flux_top_metal]
+    type = SideDiffusiveFluxIntegral
+    variable = c_metal
+    boundary = top_metal
+    diffusivity = diffusivity
+    outputs = csv_scalars
+  []
+  [flux_top_vacuum]
+    type = SideDiffusiveFluxIntegral
+    variable = c_vacuum
+    boundary = top_vacuum
+    diffusivity = diffusivity
+    outputs = csv_scalars
+  []
+
+  # left boundary (should be zero, just to verify)
+  [flux_left_vacuum]
+    type = SideDiffusiveFluxIntegral
+    variable = c_vacuum
+    boundary = left
+    diffusivity = diffusivity
+    outputs = csv_scalars
+  []
+
+  # bottom metal (should be zero after sideset split)
+  [flux_bottom_metal]
+    type = SideDiffusiveFluxIntegral
+    variable = c_metal
+    boundary = bottom_metal
+    diffusivity = diffusivity
+    outputs = csv_scalars
+  []
+  #mass conservation check
+  [flux_metal_cumulative]
+    type = TimeIntegratedPostprocessor
+    value = flux_metal
+    execute_on = 'timestep_end'
+    outputs = csv_scalars
+  []
+
+  [flux_out_cumulative]
+    type = TimeIntegratedPostprocessor
+    value = flux_out_bottom
+    execute_on = 'timestep_end'
+    outputs = csv_scalars
+  []
+  [flux_top_vacuum_cumulative]
+    type = TimeIntegratedPostprocessor
+    value = flux_top_vacuum
+    execute_on = 'timestep_end'
+    outputs = csv_scalars
+  []
 []
 
 [VectorPostprocessors]
@@ -267,7 +365,7 @@ surface_concentration_metal_outer = '${fparse metal_solubility_K0*exp(-metal_sol
     variable = 'c_metal'
     start_point = '${inner_radius} 0.0055 0'
     end_point   = '${fparse inner_radius + metal_thickness} 0.0055 0'
-    num_points  = 20
+    num_points  = '${fparse num_mesh_elements_across_metal}'
     sort_by = x
     execute_on = 'final'
     outputs = csv_spatial
@@ -277,17 +375,17 @@ surface_concentration_metal_outer = '${fparse metal_solubility_K0*exp(-metal_sol
     variable = 'c_vacuum'
     start_point = '0 0.0055 0'
     end_point   = '${inner_radius} 0.0055 0'
-    num_points  = 20
+    num_points  = '${fparse num_mesh_elements_across_inner_diameter}'
     sort_by = x
     execute_on = 'final'
     outputs = csv_spatial
   []
-    [radial_profile_metal_top]
+  [radial_profile_metal_top]
     type = LineValueSampler
     variable = 'c_metal'
     start_point = '${inner_radius} 0.011 0'
     end_point   = '${fparse inner_radius + metal_thickness} 0.011 0'
-    num_points  = 20
+    num_points  = '${fparse num_mesh_elements_across_metal}'
     sort_by = x
     execute_on = 'final'
     outputs = csv_spatial
@@ -297,7 +395,7 @@ surface_concentration_metal_outer = '${fparse metal_solubility_K0*exp(-metal_sol
     variable = 'c_vacuum'
     start_point = '0 0.011 0'
     end_point   = '${inner_radius} 0.011 0'
-    num_points  = 20
+    num_points  = '${fparse num_mesh_elements_across_inner_diameter}'
     sort_by = x
     execute_on = 'final'
     outputs = csv_spatial
@@ -307,7 +405,7 @@ surface_concentration_metal_outer = '${fparse metal_solubility_K0*exp(-metal_sol
     variable = 'c_metal'
     start_point = '${inner_radius} 0 0'
     end_point   = '${fparse inner_radius + metal_thickness} 0 0'
-    num_points  = 20
+    num_points  = '${fparse num_mesh_elements_across_metal}'
     sort_by = x
     execute_on = 'final'
     outputs = csv_spatial
@@ -317,7 +415,7 @@ surface_concentration_metal_outer = '${fparse metal_solubility_K0*exp(-metal_sol
     variable = 'c_vacuum'
     start_point = '0 0 0'
     end_point   = '${inner_radius} 0 0'
-    num_points  = 20
+    num_points  = '${fparse num_mesh_elements_across_inner_diameter}'
     sort_by = x
     execute_on = 'final'
     outputs = csv_spatial
@@ -327,7 +425,7 @@ surface_concentration_metal_outer = '${fparse metal_solubility_K0*exp(-metal_sol
     variable = 'c_metal'
     start_point = '${inner_radius} 0 0'
     end_point   = '${inner_radius} ${tube_height} 0'
-    num_points  = 40
+    num_points  = '${fparse num_mesh_elements_across_axis}'
     sort_by = y
     execute_on = 'final'
     outputs = csv_spatial
@@ -337,7 +435,7 @@ surface_concentration_metal_outer = '${fparse metal_solubility_K0*exp(-metal_sol
     variable = 'c_metal'
     start_point = '${fparse inner_radius + metal_thickness} 0 0'
     end_point   = '${fparse inner_radius + metal_thickness} ${tube_height} 0'
-    num_points  = 40
+    num_points  = '${fparse num_mesh_elements_across_axis}'
     sort_by = y
     execute_on = 'final'
     outputs = csv_spatial
@@ -347,7 +445,7 @@ surface_concentration_metal_outer = '${fparse metal_solubility_K0*exp(-metal_sol
     variable = 'c_vacuum'
     start_point = '0 0 0'
     end_point   = '0 ${tube_height} 0'
-    num_points  = 40
+    num_points  = '${fparse num_mesh_elements_across_axis}'
     sort_by = y
     execute_on = 'final'
     outputs = csv_spatial
@@ -386,6 +484,10 @@ surface_concentration_metal_outer = '${fparse metal_solubility_K0*exp(-metal_sol
   automatic_scaling = true
   compute_scaling_once = false
 
+  steady_state_detection = true
+  steady_state_tolerance = 1e-8
+  steady_state_start_time = 0.01
+
   # Time Stepper: Using Iteration Adaptative here
   [TimeStepper]
     type = IterationAdaptiveDT
@@ -414,3 +516,4 @@ surface_concentration_metal_outer = '${fparse metal_solubility_K0*exp(-metal_sol
   []
   perf_graph = true
 []
+
