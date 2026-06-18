@@ -4,7 +4,7 @@ outer_diameter = '${units 0.2944e-3 m}'
 outer_radius = '${fparse outer_diameter / 2}'
 inner_radius = '${fparse outer_radius - metal_thickness}'
 
-num_mesh_elements_across_metal = 25
+num_mesh_elements_across_metal = 50
 
 # Conditions
 R = '${units 8.31446261815324 J/mol/K}'
@@ -189,9 +189,9 @@ surface_concentration_metal_inner = '${fparse metal_solubility_K0 * exp(-metal_s
   type = Transient
 
   line_search = 'none'
-  l_tol = 1e-11
-  nl_abs_tol = 5e-10
-  nl_rel_tol = 1e-8
+  l_tol = 1e-13
+  nl_abs_tol = 1e-12
+  nl_rel_tol = 1e-12
   l_max_its = 20
   nl_max_its = 20
 
