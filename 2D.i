@@ -4,7 +4,7 @@ inner_radius = '${fparse outer_diameter/2-metal_thickness}'
 tube_height = '${units 0.011 m}'
 
 num_mesh_elements_across_metal = 50
-num_mesh_elements_across_inner_diameter = 82
+num_mesh_elements_across_inner_radius = 82
 num_mesh_elements_across_axis = 132
 
 initial_temperature = '${units 723.15 K}'
@@ -19,12 +19,15 @@ metal_solubility_K0 = '${fparse 2 * metal_solubility_K0_per_molecule}' # the fac
 metal_solubility_Ea = '${units -8.4e3 J/mol}'
 surface_concentration_metal_outer = '${fparse metal_solubility_K0*exp(-metal_solubility_Ea/R/initial_temperature)*sqrt(outside_pressure)}'
 
+D0_metal = '${units 2.4e-7 m^2/s}'
+Ea_metal = '${units 21.1e3 J/mol}'
+
 [Mesh]
   coord_type = RZ
   [gen]
     type = GeneratedMeshGenerator
     dim = 2
-    nx = '${fparse num_mesh_elements_across_inner_diameter + num_mesh_elements_across_metal}'
+    nx = '${fparse num_mesh_elements_across_inner_radius + num_mesh_elements_across_metal}'
     ny = '${fparse num_mesh_elements_across_axis}'
     xmin = 0
     xmax = '${fparse inner_radius + metal_thickness}'
@@ -244,19 +247,19 @@ surface_concentration_metal_outer = '${fparse metal_solubility_K0*exp(-metal_sol
     property_name = diffusivity
     coupled_variables = temperature
     constant_names = 'D0 Ea'
-    constant_expressions = '${units 2.4e-7 m^2/s} ${units 21.1e3 J/mol}'
+    constant_expressions = '${D0_metal} ${Ea_metal}'
     material_property_names = 'R'
     expression = 'D0*exp(-Ea/R/temperature)'
     block = 2 # metal
   []
-  [diffusivity_vacuum] # 1e8 more than diffusicvity_metal
+  [diffusivity_vacuum] # 1e8 more than diffusivity_metal
     type = DerivativeParsedMaterial
     property_name = diffusivity
     coupled_variables = temperature
     constant_names = 'D0 Ea'
-    constant_expressions = '${units 2.4e-7 m^2/s} ${units 21.1e3 J/mol}'
+    constant_expressions = '${D0_metal} ${Ea_metal}'
     material_property_names = 'R'
-    expression = '1e8 * D0*exp(-Ea/R/temperature)'
+    expression = '1e6 * D0*exp(-Ea/R/temperature)'
     block = 1 # vacuum
   []
 []
@@ -375,7 +378,7 @@ surface_concentration_metal_outer = '${fparse metal_solubility_K0*exp(-metal_sol
     variable = 'c_vacuum'
     start_point = '0 0.0055 0'
     end_point   = '${inner_radius} 0.0055 0'
-    num_points  = '${fparse num_mesh_elements_across_inner_diameter}'
+    num_points  = '${fparse num_mesh_elements_across_inner_radius}'
     sort_by = x
     execute_on = 'final'
     outputs = csv_spatial
@@ -395,12 +398,12 @@ surface_concentration_metal_outer = '${fparse metal_solubility_K0*exp(-metal_sol
     variable = 'c_vacuum'
     start_point = '0 0.011 0'
     end_point   = '${inner_radius} 0.011 0'
-    num_points  = '${fparse num_mesh_elements_across_inner_diameter}'
+    num_points  = '${fparse num_mesh_elements_across_inner_radius}'
     sort_by = x
     execute_on = 'final'
     outputs = csv_spatial
   []
-    [radial_profile_metal_bottom]
+  [radial_profile_metal_bottom]
     type = LineValueSampler
     variable = 'c_metal'
     start_point = '${inner_radius} 0 0'
@@ -415,7 +418,7 @@ surface_concentration_metal_outer = '${fparse metal_solubility_K0*exp(-metal_sol
     variable = 'c_vacuum'
     start_point = '0 0 0'
     end_point   = '${inner_radius} 0 0'
-    num_points  = '${fparse num_mesh_elements_across_inner_diameter}'
+    num_points  = '${fparse num_mesh_elements_across_inner_radius}'
     sort_by = x
     execute_on = 'final'
     outputs = csv_spatial
@@ -450,6 +453,16 @@ surface_concentration_metal_outer = '${fparse metal_solubility_K0*exp(-metal_sol
     execute_on = 'final'
     outputs = csv_spatial
   []
+  [axial_profile_vacuum_outer]
+    type = LineValueSampler
+    variable = 'c_vacuum'
+    start_point = '${fparse inner_radius - inner_radius/num_mesh_elements_across_inner_radius} 0 0'
+    end_point   = '${fparse inner_radius - inner_radius/num_mesh_elements_across_inner_radius} ${tube_height} 0'
+    num_points  = '${fparse num_mesh_elements_across_axis}'
+    sort_by = y
+    execute_on = 'final'
+    outputs = csv_spatial
+  []
 []
 
 # It converges faster if all the residuals are at the same magnitude
@@ -478,7 +491,7 @@ surface_concentration_metal_outer = '${fparse metal_solubility_K0*exp(-metal_sol
   l_max_its = 30
   nl_max_its = 20
 
-  end_time = 0.1
+  end_time = 2
   dtmax = 5e-4
 
   automatic_scaling = true
