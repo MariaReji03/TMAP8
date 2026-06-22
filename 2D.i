@@ -1,7 +1,7 @@
-metal_thickness = '${units 0.01e-3 m}'
-outer_diameter = '${units 0.2944e-3 m}'
+metal_thickness = '${units 0.01e-3 m -> mum}'
+outer_diameter = '${units 0.2944e-3 m -> mum}'
 inner_radius = '${fparse outer_diameter/2-metal_thickness}'
-tube_height = '${units 0.011 m}'
+tube_height = '${units 0.011 m -> mum}'
 
 num_mesh_elements_across_metal = 50
 num_mesh_elements_across_inner_radius = 82
@@ -9,17 +9,19 @@ num_mesh_elements_across_axis = 132
 
 initial_temperature = '${units 723.15 K}'
 outside_pressure = '${units 2.0e5 Pa}'
+HT_mole_fraction = 1.2e-5 #0.0012 mol%
+outside_tritium_pressure = '${fparse HT_mole_fraction * outside_pressure}'
 vacuum_pressure = '${units 1e-6 Pa}'
 
 R = '${units 8.31446261815324 J/mol/K}'
-initial_concentration_vacuum = '${fparse vacuum_pressure/R/initial_temperature}'
+initial_concentration_vacuum = '${units ${fparse vacuum_pressure/R/initial_temperature} mol/m^3 -> at/mum^3}'
 
-metal_solubility_K0_per_molecule = '${units 4.45e-1 mol/m^3/Pa^0.5}'
+metal_solubility_K0_per_molecule = '${units 4.45e-1 mol/m^3/Pa -> at/mum^3/Pa}'
 metal_solubility_K0 = '${fparse 2 * metal_solubility_K0_per_molecule}' # the factor 2 is here to convert from mol(Q2)/m3/sqrt(Pa) to mol(Q)/m3/sqrt(Pa)
 metal_solubility_Ea = '${units -8.4e3 J/mol}'
-surface_concentration_metal_outer = '${fparse metal_solubility_K0*exp(-metal_solubility_Ea/R/initial_temperature)*sqrt(outside_pressure)}'
+surface_concentration_metal_outer = '${fparse metal_solubility_K0*exp(-metal_solubility_Ea/R/initial_temperature)*sqrt(outside_tritium_pressure)}'
 
-D0_metal = '${units 2.4e-7 m^2/s}'
+D0_metal = '${units 2.4e-7 m^2/s -> mum^2/s}'
 Ea_metal = '${units 21.1e3 J/mol}'
 
 [Mesh]
@@ -227,7 +229,7 @@ Ea_metal = '${units 21.1e3 J/mol}'
     n_sorption = 0.5
     diffusivity = diffusivity
     unit_scale = 1
-    unit_scale_neighbor = 1
+    unit_scale_neighbor = ${fparse ${units 1 m -> mum} ^ 3 / ${units 1 mol -> at}}
     temperature = temperature
     variable = c_metal
     neighbor_var = c_vacuum
@@ -366,8 +368,8 @@ Ea_metal = '${units 21.1e3 J/mol}'
   [radial_profile_metal_mid]
     type = LineValueSampler
     variable = 'c_metal'
-    start_point = '${inner_radius} 0.0055 0'
-    end_point   = '${fparse inner_radius + metal_thickness} 0.0055 0'
+    start_point = '${inner_radius} ${units 0.0055 m -> mum} 0'
+    end_point   = '${fparse inner_radius + metal_thickness} ${units 0.0055 m -> mum} 0'
     num_points  = '${fparse num_mesh_elements_across_metal}'
     sort_by = x
     execute_on = 'final'
@@ -376,8 +378,8 @@ Ea_metal = '${units 21.1e3 J/mol}'
   [radial_profile_vacuum_mid]
     type = LineValueSampler
     variable = 'c_vacuum'
-    start_point = '0 0.0055 0'
-    end_point   = '${inner_radius} 0.0055 0'
+    start_point = '0 ${units 0.0055 m -> mum} 0'
+    end_point   = '${inner_radius} ${units 0.0055 m -> mum} 0'
     num_points  = '${fparse num_mesh_elements_across_inner_radius}'
     sort_by = x
     execute_on = 'final'
@@ -386,8 +388,8 @@ Ea_metal = '${units 21.1e3 J/mol}'
   [radial_profile_metal_top]
     type = LineValueSampler
     variable = 'c_metal'
-    start_point = '${inner_radius} 0.011 0'
-    end_point   = '${fparse inner_radius + metal_thickness} 0.011 0'
+    start_point = '${inner_radius} ${units 0.011 m -> mum} 0'
+    end_point   = '${fparse inner_radius + metal_thickness} ${units 0.011 m -> mum} 0'
     num_points  = '${fparse num_mesh_elements_across_metal}'
     sort_by = x
     execute_on = 'final'
@@ -396,8 +398,8 @@ Ea_metal = '${units 21.1e3 J/mol}'
   [radial_profile_vacuum_top]
     type = LineValueSampler
     variable = 'c_vacuum'
-    start_point = '0 0.011 0'
-    end_point   = '${inner_radius} 0.011 0'
+    start_point = '0 ${units 0.011 m -> mum} 0'
+    end_point   = '${inner_radius} ${units 0.011 m -> mum} 0'
     num_points  = '${fparse num_mesh_elements_across_inner_radius}'
     sort_by = x
     execute_on = 'final'
@@ -529,4 +531,3 @@ Ea_metal = '${units 21.1e3 J/mol}'
   []
   perf_graph = true
 []
-
