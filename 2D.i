@@ -3,8 +3,8 @@ outer_diameter = '${units 0.2944e-3 m -> mum}'
 inner_radius = '${fparse outer_diameter/2-metal_thickness}'
 tube_height = '${units 0.011 m -> mum}'
 
-num_mesh_elements_across_metal = 50
-num_mesh_elements_across_inner_radius = 82
+num_mesh_elements_across_metal = 20
+num_mesh_elements_across_inner_radius = 160
 num_mesh_elements_across_axis = 132
 
 initial_temperature = '${units 723.15 K}'
@@ -26,33 +26,40 @@ Ea_metal = '${units 21.1e3 J/mol}'
 
 [Mesh]
   coord_type = RZ
-  [gen]
+
+  [vacuum_mesh]
     type = GeneratedMeshGenerator
     dim = 2
-    nx = '${fparse num_mesh_elements_across_inner_radius + num_mesh_elements_across_metal}'
-    ny = '${fparse num_mesh_elements_across_axis}'
+    nx = '${num_mesh_elements_across_inner_radius}'
+    ny = '${num_mesh_elements_across_axis}'
     xmin = 0
+    xmax = '${inner_radius}'
+    ymin = 0
+    ymax = '${tube_height}'
+    subdomain_ids = 1
+  []
+
+  [metal_mesh]
+    type = GeneratedMeshGenerator
+    dim = 2
+    nx = '${num_mesh_elements_across_metal}'
+    ny = '${num_mesh_elements_across_axis}'
+    xmin = '${inner_radius}'
     xmax = '${fparse inner_radius + metal_thickness}'
     ymin = 0
-    ymax = ${tube_height}
+    ymax = '${tube_height}'
+    subdomain_ids = 2
   []
-  [block1] # vacuum
-    type = SubdomainBoundingBoxGenerator
-    block_id = 1
-    bottom_left = '0 0 0'
-    top_right = '${inner_radius} ${tube_height} 0'
-    input = gen
+
+  [stitched]
+    type = StitchMeshGenerator
+    inputs = 'vacuum_mesh metal_mesh'
+    stitch_boundaries_pairs = 'right left'
   []
-  [block2] # metal
-    type = SubdomainBoundingBoxGenerator
-    block_id = 2
-    bottom_left = '${inner_radius} 0 0'
-    top_right = '${fparse inner_radius + metal_thickness} ${tube_height} 0'
-    input = block1
-  []
+
   [interface_vacuum_to_metal]
     type = SideSetsBetweenSubdomainsGenerator
-    input = block2
+    input = stitched
     primary_block = 1
     paired_block = 2
     new_boundary = 'interface_vacuum_metal'
@@ -93,6 +100,7 @@ Ea_metal = '${units 21.1e3 J/mol}'
     included_subdomains = '1'
   []
 []
+
 
 [Problem]
   type = ReferenceResidualProblem
@@ -233,7 +241,7 @@ Ea_metal = '${units 21.1e3 J/mol}'
     temperature = temperature
     variable = c_metal
     neighbor_var = c_vacuum
-    sorption_penalty = 1e1
+    sorption_penalty = 200
     boundary = interface_metal_vacuum
   []
 []
@@ -254,7 +262,7 @@ Ea_metal = '${units 21.1e3 J/mol}'
     expression = 'D0*exp(-Ea/R/temperature)'
     block = 2 # metal
   []
-  [diffusivity_vacuum] # 1e8 more than diffusivity_metal
+  [diffusivity_vacuum] # 1e6 more than diffusivity_metal
     type = DerivativeParsedMaterial
     property_name = diffusivity
     coupled_variables = temperature
@@ -300,7 +308,7 @@ Ea_metal = '${units 21.1e3 J/mol}'
     block = 1
     outputs = csv_scalars
   []
-    # interface flux on metal side
+  # interface flux on metal side
   [flux_interface_metal_side]
     type = SideDiffusiveFluxIntegral
     variable = c_metal
@@ -458,8 +466,8 @@ Ea_metal = '${units 21.1e3 J/mol}'
   [axial_profile_vacuum_outer]
     type = LineValueSampler
     variable = 'c_vacuum'
-    start_point = '${fparse inner_radius - inner_radius/num_mesh_elements_across_inner_radius} 0 0'
-    end_point   = '${fparse inner_radius - inner_radius/num_mesh_elements_across_inner_radius} ${tube_height} 0'
+    start_point = '${inner_radius} 0 0'
+    end_point   = '${inner_radius} ${tube_height} 0'
     num_points  = '${fparse num_mesh_elements_across_axis}'
     sort_by = y
     execute_on = 'final'
@@ -500,7 +508,7 @@ Ea_metal = '${units 21.1e3 J/mol}'
   compute_scaling_once = false
 
   steady_state_detection = true
-  steady_state_tolerance = 1e-8
+  steady_state_tolerance = 1e-5
   steady_state_start_time = 0.01
 
   # Time Stepper: Using Iteration Adaptative here
