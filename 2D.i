@@ -24,6 +24,8 @@ surface_concentration_metal_outer = '${fparse metal_solubility_K0*exp(-metal_sol
 D0_metal = '${units 2.4e-7 m^2/s -> mum^2/s}'
 Ea_metal = '${units 21.1e3 J/mol}'
 
+!include trap_1site.i 
+
 [Mesh]
   coord_type = RZ
 
@@ -121,26 +123,26 @@ Ea_metal = '${units 21.1e3 J/mol}'
 
 [Kernels]
   [timeDerivative_metal]
-    type = TimeDerivative
+    type = ADTimeDerivative
     variable = c_metal
     extra_vector_tags = ref
     block = 2 # metal
   []
   [diffusion_metal]
-    type = MatDiffusion
+    type = ADMatDiffusion
     variable = c_metal
     diffusivity = diffusivity
     extra_vector_tags = ref
     block = 2 # metal
   []
   [timeDerivative_vacuum]
-    type = TimeDerivative
+    type = ADTimeDerivative
     variable = c_vacuum
     extra_vector_tags = ref
     block = 1 # vacuum
   []
   [diffusion_vacuum]
-    type = MatDiffusion
+    type = ADMatDiffusion
     variable = c_vacuum
     diffusivity = diffusivity
     extra_vector_tags = ref
@@ -191,38 +193,38 @@ Ea_metal = '${units 21.1e3 J/mol}'
 
 [BCs]
   [inner_vacuum]
-    type = NeumannBC
+    type = ADNeumannBC
     variable = c_vacuum
     value = 0
     boundary = left # centerline
   []
   [outside_metal] # Sieverts law with outside pressure
-    type = DirichletBC
+    type = ADDirichletBC
     variable = c_metal
     value = '${surface_concentration_metal_outer}'
     boundary = right #outer_metal
   []
   [bottom_vacuum] # Pressure of the vacuum
-    type = DirichletBC
+    type = ADDirichletBC
     variable = c_vacuum
     boundary = bottom_vacuum
     value = '${initial_concentration_vacuum}'
   []
   #Explicitly add NeumannBC on all other boundaries
   [top_vacuum]
-    type = NeumannBC
+    type = ADNeumannBC
     variable = c_vacuum
     value = 0
     boundary = top_vacuum
   []
   [top_metal]
-    type = NeumannBC
+    type = ADNeumannBC
     variable = c_metal
     value = 0
     boundary = top_metal
   []
   [bottom_metal]
-    type = NeumannBC
+    type = ADNeumannBC
     variable = c_metal
     value = 0
     boundary = bottom_metal
@@ -231,7 +233,7 @@ Ea_metal = '${units 21.1e3 J/mol}'
 
 [InterfaceKernels]
   [interface]
-    type = InterfaceSorption
+    type = ADInterfaceSorption
     K0 = ${metal_solubility_K0}
     Ea = ${metal_solubility_Ea}
     n_sorption = 0.5
@@ -247,50 +249,43 @@ Ea_metal = '${units 21.1e3 J/mol}'
 []
 
 [Materials]
-  [constant]
-    type = ConstantMaterial
-    property_name = 'R'
-    value = '8.31446261815324' # ideal gas constant
-  []
   [diffusivity_metal]
-    type = DerivativeParsedMaterial
+    type = ADDerivativeParsedMaterial
     property_name = diffusivity
     coupled_variables = temperature
     constant_names = 'D0 Ea'
     constant_expressions = '${D0_metal} ${Ea_metal}'
-    material_property_names = 'R'
-    expression = 'D0*exp(-Ea/R/temperature)'
+    expression = 'D0*exp(-Ea/${R}/temperature)' 
     block = 2 # metal
   []
   [diffusivity_vacuum] # 1e6 more than diffusivity_metal
-    type = DerivativeParsedMaterial
+    type = ADDerivativeParsedMaterial
     property_name = diffusivity
     coupled_variables = temperature
     constant_names = 'D0 Ea'
     constant_expressions = '${D0_metal} ${Ea_metal}'
-    material_property_names = 'R'
-    expression = '1e6 * D0*exp(-Ea/R/temperature)'
+    expression = '1e6 * D0*exp(-Ea/${R}/temperature)'
     block = 1 # vacuum
   []
 []
 
 [Postprocessors]
   [flux_vacuum] # verify flux preservation
-    type = SideDiffusiveFluxIntegral
+    type = ADSideDiffusiveFluxIntegral
     variable = c_vacuum
     boundary = interface_vacuum_metal
     diffusivity = diffusivity
     outputs = csv_scalars
   []
   [flux_metal]
-    type = SideDiffusiveFluxIntegral
+    type = ADSideDiffusiveFluxIntegral
     variable = c_metal
     boundary = right
     diffusivity = diffusivity
     outputs = csv_scalars
   []
   [flux_out_bottom]
-    type = SideDiffusiveFluxIntegral
+    type = ADSideDiffusiveFluxIntegral
     variable = c_vacuum
     boundary = bottom_vacuum
     diffusivity = diffusivity
@@ -310,7 +305,7 @@ Ea_metal = '${units 21.1e3 J/mol}'
   []
   # interface flux on metal side
   [flux_interface_metal_side]
-    type = SideDiffusiveFluxIntegral
+    type = ADSideDiffusiveFluxIntegral
     variable = c_metal
     boundary = interface_metal_vacuum
     diffusivity = diffusivity
@@ -319,14 +314,14 @@ Ea_metal = '${units 21.1e3 J/mol}'
 
   # top boundary fluxes
   [flux_top_metal]
-    type = SideDiffusiveFluxIntegral
+    type = ADSideDiffusiveFluxIntegral
     variable = c_metal
     boundary = top_metal
     diffusivity = diffusivity
     outputs = csv_scalars
   []
   [flux_top_vacuum]
-    type = SideDiffusiveFluxIntegral
+    type = ADSideDiffusiveFluxIntegral
     variable = c_vacuum
     boundary = top_vacuum
     diffusivity = diffusivity
@@ -335,7 +330,7 @@ Ea_metal = '${units 21.1e3 J/mol}'
 
   # left boundary (should be zero, just to verify)
   [flux_left_vacuum]
-    type = SideDiffusiveFluxIntegral
+    type = ADSideDiffusiveFluxIntegral
     variable = c_vacuum
     boundary = left
     diffusivity = diffusivity
@@ -344,7 +339,7 @@ Ea_metal = '${units 21.1e3 J/mol}'
 
   # bottom metal (should be zero after sideset split)
   [flux_bottom_metal]
-    type = SideDiffusiveFluxIntegral
+    type = ADSideDiffusiveFluxIntegral
     variable = c_metal
     boundary = bottom_metal
     diffusivity = diffusivity
@@ -501,14 +496,14 @@ Ea_metal = '${units 21.1e3 J/mol}'
   l_max_its = 30
   nl_max_its = 20
 
-  end_time = 2
-  dtmax = 5e-4
+  end_time = 1.75
+  dtmax = 5e-3
 
   automatic_scaling = true
   compute_scaling_once = false
 
   steady_state_detection = true
-  steady_state_tolerance = 1e-5
+  steady_state_tolerance = 1e-3
   steady_state_start_time = 0.01
 
   # Time Stepper: Using Iteration Adaptative here
