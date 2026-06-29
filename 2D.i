@@ -24,7 +24,12 @@ surface_concentration_metal_outer = '${fparse metal_solubility_K0*exp(-metal_sol
 D0_metal = '${units 2.4e-7 m^2/s -> mum^2/s}'
 Ea_metal = '${units 21.1e3 J/mol}'
 
+trap_per_free = 1 #dimensionless
+Number_density = '${units 6.8e22 at/cm^3 -> at/mum^3}' # calculated for Pd
+
 !include trap_1site.i 
+!include trap_2site.i 
+!include trap_3site.i 
 
 [Mesh]
   coord_type = RZ
@@ -492,12 +497,12 @@ Ea_metal = '${units 21.1e3 J/mol}'
   line_search = 'none'
   l_tol = 1e-11
   nl_abs_tol = 1e-8 #1e-14
-  nl_rel_tol = 1e-5 #1e-08
+  nl_rel_tol = 1e-7 #1e-08
   l_max_its = 30
   nl_max_its = 20
 
   end_time = 1.75
-  dtmax = 5e-3
+  dtmax = 5e-4
 
   automatic_scaling = true
   compute_scaling_once = false
