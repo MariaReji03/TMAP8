@@ -3,9 +3,9 @@ outer_diameter = '${units 0.2944e-3 m -> mum}'
 inner_radius = '${fparse outer_diameter/2-metal_thickness}'
 tube_height = '${units 0.011 m -> mum}'
 
-num_mesh_elements_across_metal = 20
-num_mesh_elements_across_inner_radius = 160
-num_mesh_elements_across_axis = 132
+num_mesh_elements_across_metal = 50
+num_mesh_elements_across_inner_radius = 180
+num_mesh_elements_across_axis = 152
 
 initial_temperature = '${units 723.15 K}'
 outside_pressure = '${units 2.0e5 Pa}'
@@ -23,6 +23,7 @@ surface_concentration_metal_outer = '${fparse metal_solubility_K0*exp(-metal_sol
 
 D0_metal = '${units 2.4e-7 m^2/s -> mum^2/s}'
 Ea_metal = '${units 21.1e3 J/mol}'
+D_K_vacuum = '${units 0.17859 m^2/s -> mum^2/s}'
 
 trap_per_free = 1 #dimensionless
 Number_density = '${units 6.8e22 at/cm^3 -> at/mum^3}' # calculated for Pd
@@ -248,7 +249,7 @@ Number_density = '${units 6.8e22 at/cm^3 -> at/mum^3}' # calculated for Pd
     temperature = temperature
     variable = c_metal
     neighbor_var = c_vacuum
-    sorption_penalty = 200
+    sorption_penalty = 5e3
     boundary = interface_metal_vacuum
   []
 []
@@ -263,13 +264,10 @@ Number_density = '${units 6.8e22 at/cm^3 -> at/mum^3}' # calculated for Pd
     expression = 'D0*exp(-Ea/${R}/temperature)' 
     block = 2 # metal
   []
-  [diffusivity_vacuum] # 1e6 more than diffusivity_metal
+  [diffusivity_vacuum] # from Knudsen diffusion
     type = ADDerivativeParsedMaterial
     property_name = diffusivity
-    coupled_variables = temperature
-    constant_names = 'D0 Ea'
-    constant_expressions = '${D0_metal} ${Ea_metal}'
-    expression = '1e6 * D0*exp(-Ea/${R}/temperature)'
+    expression = '${D_K_vacuum}'
     block = 1 # vacuum
   []
 []
@@ -482,40 +480,38 @@ Number_density = '${units 6.8e22 at/cm^3 -> at/mum^3}' # calculated for Pd
 []
 
 [Preconditioning]
-  active = Newtonlu
-  [Newtonlu]
+  [SMP]
     type = SMP
     full = true
-    solve_type = 'NEWTON'
-    petsc_options_iname = '-pc_type -pc_hypre_type -snes_type'
-    petsc_options_value = 'hypre boomeramg vinewtonrsls'
   []
 []
 
 [Executioner]
   type = Transient
-  line_search = 'none'
-  l_tol = 1e-11
+  scheme = bdf2
+  solve_type = NEWTON
+  petsc_options_iname = '-pc_type -snes_type'
+  petsc_options_value = 'lu vinewtonrsls'
+  #l_tol = 1e-11
   nl_abs_tol = 1e-8 #1e-14
   nl_rel_tol = 1e-7 #1e-08
   l_max_its = 30
   nl_max_its = 20
 
-  end_time = 1.75
+  end_time = 10
   dtmax = 5e-4
 
   automatic_scaling = true
-  compute_scaling_once = false
+  compute_scaling_once = true
 
   steady_state_detection = true
-  steady_state_tolerance = 1e-3
+  steady_state_tolerance = 1e-4
   steady_state_start_time = 0.01
 
   # Time Stepper: Using Iteration Adaptative here
   [TimeStepper]
     type = IterationAdaptiveDT
     optimal_iterations = 6
-    linear_iteration_ratio = 100
     iteration_window = 1
     growth_factor = 1.2
     dt = 1e-9 #s
