@@ -1,9 +1,7 @@
 #trap_2site.i
 
-alpha_t_2 = 1e6
-alpha_r_2 = 1e6 #1/s
-detrapping_energy_2 = 2646 #'${fparse 22000 / ${R}}'
-trapping_fraction_2 = 1e-7
+detrapping_energy_2 = 2645.99 #'${fparse 22000 / ${R}}'
+trapping_fraction_2 = 2e-8
 
 [Variables]
   [c_trapped_2] #atoms / µm³
@@ -63,7 +61,7 @@ trapping_fraction_2 = 1e-7
   [trapping_2]
     type = TrappingNodalKernel
     variable = c_trapped_2
-    alpha_t = ${alpha_t_2}
+    alpha_t = ${alpha}
     N = '${Number_density}'
     Ct0 = ${trapping_fraction_2} #dimensionless
     mobile_concentration = c_metal
@@ -75,7 +73,7 @@ trapping_fraction_2 = 1e-7
   [release_2]
     type = ReleasingNodalKernel
     variable = c_trapped_2
-    alpha_r = ${alpha_r_2}
+    alpha_r = ${alpha}
     temperature = temperature
     detrapping_energy = ${detrapping_energy_2}
     block = 2
