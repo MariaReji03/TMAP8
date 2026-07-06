@@ -27,6 +27,7 @@ D_K_vacuum = '${units 0.17859 m^2/s -> mum^2/s}'
 
 trap_per_free = 1 #dimensionless
 Number_density = '${units 6.8e22 at/cm^3 -> at/mum^3}' # calculated for Pd
+alpha = '${units 5.7e12 1/s}'
 
 !include trap_1site.i 
 !include trap_2site.i 
