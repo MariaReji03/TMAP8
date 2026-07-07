@@ -99,26 +99,3 @@ trapping_fraction_1 = 1.3e-9
     outputs = csv_scalars 
   [] 
 []
-
-[VectorPostprocessors]
-  [axial_trap_balance]
-    type = LineValueSampler
-    variable = 'c_trapped_1 empty_sites_1 c_trapped_2 empty_sites_2 c_trapped_3 empty_sites_3 total_sites'
-    start_point = '${fparse inner_radius + metal_thickness/num_mesh_elements_across_metal} 0 0'
-    end_point   = '${fparse inner_radius + metal_thickness/num_mesh_elements_across_metal} ${tube_height} 0'
-    num_points  = '${num_mesh_elements_across_axis}'
-    sort_by = y
-    execute_on = final
-    outputs = csv_spatial
-  []
-  [radial_trap_balance_mid]
-    type = LineValueSampler
-    variable = 'c_trapped_1 empty_sites_1 c_trapped_2 empty_sites_2 c_trapped_3 empty_sites_3 total_sites'
-    start_point = '${fparse inner_radius + metal_thickness/num_mesh_elements_across_metal} ${units 0.0055 m -> mum} 0'
-    end_point   = '${fparse inner_radius + metal_thickness} ${units 0.0055 m -> mum} 0'
-    num_points  = '${num_mesh_elements_across_metal}'
-    sort_by = x
-    execute_on = final
-    outputs = csv_spatial
-  []
-[]
