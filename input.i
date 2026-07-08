@@ -5,9 +5,9 @@ outer_diameter = '${units 0.2944e-3 m -> mum}'
 inner_radius = '${fparse outer_diameter/2-metal_thickness}'
 tube_height = '${units 0.011 m -> mum}'
 
-num_mesh_elements_across_metal = 5
-num_mesh_elements_across_inner_radius = 20
-num_mesh_elements_across_axis = 30
+num_mesh_elements_across_metal = 44
+num_mesh_elements_across_inner_radius = 6
+num_mesh_elements_across_axis = 57
 
 initial_temperature = '${units 723.15 K}'
 outside_pressure = '${units 2.0e5 Pa}'
@@ -31,8 +31,8 @@ trap_per_free = 1 #dimensionless
 Number_density = '${units 6.8e22 at/cm^3 -> at/mum^3}' # calculated for Pd
 alpha = '${units 5.7e12 1/s}'
 
-#!include 2D.i
-!include 3D.i
+!include 2D.i
+#!include 3D.i
 !include trap_1site.i
 !include trap_2site.i
 !include trap_3site.i
