@@ -31,8 +31,9 @@ trap_per_free = 1 #dimensionless
 Number_density = '${units 6.8e22 at/cm^3 -> at/mum^3}' # calculated for Pd
 alpha = '${units 5.7e12 1/s}'
 
-!include 2D.i
+#!include 2D.i
 #!include 3D.i
+!include 3D_varP.i
 !include trap_1site.i
 !include trap_2site.i
 !include trap_3site.i
