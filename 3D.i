@@ -3,7 +3,7 @@
 [Mesh]
   [cross_section]
     type = ConcentricCircleMeshGenerator
-    num_sectors = 8           
+    num_sectors = 16
     radii = '${inner_radius} ${fparse inner_radius + metal_thickness}'
     rings = '${num_mesh_elements_across_inner_radius} ${num_mesh_elements_across_metal}'            
     has_outer_square = false  
